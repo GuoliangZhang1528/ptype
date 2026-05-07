@@ -37,7 +37,7 @@ export type BattleRoom = {
 }
 
 export function useBattleSocket(username: string) {
-  const [socket, setSocket] = useState<Socket | null>(null)
+  const socketRef = useRef<Socket | null>(null)
   const [roomId, setRoomId] = useState<string | null>(null)
   const [status, setStatus] = useState<BattleState>('idle')
   const [players, setPlayers] = useState<Record<string, BattlePlayer>>({})
@@ -57,7 +57,7 @@ export function useBattleSocket(username: string) {
       path: '/socket.io',
       autoConnect: true,
     })
-    setSocket(s)
+    socketRef.current = s
 
     s.on('connect', () => {
       console.log('Connected to battle server', s.id)
@@ -97,9 +97,10 @@ export function useBattleSocket(username: string) {
       setCountdown(count)
     })
 
-    s.on('game_start', ({ startTime }) => {
+    s.on('game_start', ({ startTime, config }) => {
       setStatus('playing')
       setStartTime(startTime)
+      if (config) setGameConfig(config)
       setCountdown(null)
     })
 
@@ -128,55 +129,63 @@ export function useBattleSocket(username: string) {
 
     return () => {
       s.disconnect()
+      socketRef.current = null
     }
   }, [])
 
   const connect = useCallback(() => {
+    const socket = socketRef.current
     if (socket?.connected) return
     socket?.connect()
-  }, [socket])
+  }, [])
 
   const getRooms = useCallback(() => {
+    const socket = socketRef.current
     connect()
     socket?.emit('get_rooms')
-  }, [socket, connect])
+  }, [connect])
 
   const createRoom = useCallback(
-    (config: Partial<BattleConfig>) => {
+    (config: BattleConfig) => {
+      const socket = socketRef.current
       connect()
       socket?.emit('create_room', { username, config })
     },
-    [socket, username, connect]
+    [username, connect]
   )
 
   const joinRoom = useCallback(
     (roomId: string) => {
+      const socket = socketRef.current
       connect()
       socket?.emit('join_room', { roomId, username })
       setWinner(null)
     },
-    [socket, username, connect]
+    [username, connect]
   )
 
   const setReady = useCallback(
     (ready: boolean) => {
+      const socket = socketRef.current
       if (roomId) {
         socket?.emit('player_ready', { roomId, ready })
       }
     },
-    [socket, roomId]
+    [roomId]
   )
 
   const updateProgress = useCallback(
     (wpm: number, progress: number, correctChars: number) => {
+      const socket = socketRef.current
       if (roomId && status === 'playing') {
         socket?.emit('update_progress', { roomId, wpm, progress, correctChars })
       }
     },
-    [socket, roomId, status]
+    [roomId, status]
   )
 
   const leaveRoom = useCallback(() => {
+    const socket = socketRef.current
     if (roomId) {
       socket?.emit('leave_room', { roomId })
       setRoomId(null)
@@ -187,10 +196,9 @@ export function useBattleSocket(username: string) {
       // Refresh rooms when leaving
       socket?.emit('get_rooms')
     }
-  }, [socket, roomId])
+  }, [roomId])
 
   return {
-    socket,
     roomId,
     status,
     players,

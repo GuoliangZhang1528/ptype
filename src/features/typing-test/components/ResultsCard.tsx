@@ -98,7 +98,7 @@ export function ResultsCard() {
       case 'english':
         return tSettings('modeLabels.english')
       case 'chinese':
-        return `${tSettings('modeLabels.chinese')} (${chineseStyle === 'modern' ? '现代文' : '古文'})` // 临时处理，后续可以优化
+        return `${tSettings('modeLabels.chinese')} (${tSettings(`chineseStyleLabels.${chineseStyle}`)})`
       case 'coder':
         return `${tSettings('modeLabels.coder')} (${programmingLanguage})`
       case 'custom':
@@ -203,7 +203,9 @@ export function ResultsCard() {
         animate={{ opacity: 1 }}
         transition={{ delay: 0.7 }}
       >
-        <h3 className="text-sm text-gray-400 mb-4">CPM Trend</h3>
+        <h3 className="text-sm text-gray-400 mb-4">
+          {t('chartTitle.cpm')}
+        </h3>
         <CpmChart data={cpmHistory} unit="CPM" />
       </motion.div>
 

@@ -8,10 +8,12 @@ import { useTranslations } from 'next-intl'
 import { SoundDropdown } from './SoundDropdown'
 
 interface HeaderProps {
-  activeTab: string
-  setActiveTab: (tab: any) => void // Using any for simplicity as strict type is in parent
-  tabs: readonly { id: string; label: string }[]
+  activeTab: TabId
+  setActiveTab: (tab: TabId) => void
+  tabs: readonly { id: TabId; label: string }[]
 }
+
+type TabId = 'practice' | 'leaderboard' | 'battle' | 'history' | 'profile'
 
 export function Header({ activeTab, setActiveTab, tabs }: HeaderProps) {
   const { openAuthModal, user, isAuthenticated, logout } = useAuthStore()
@@ -20,7 +22,7 @@ export function Header({ activeTab, setActiveTab, tabs }: HeaderProps) {
   return (
     <header className="pt-8 pb-2 px-4 max-w-6xl mx-auto w-full">
       <motion.div
-        className="flex items-center justify-between"
+        className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
       >
@@ -28,13 +30,13 @@ export function Header({ activeTab, setActiveTab, tabs }: HeaderProps) {
         <TypewriterTitle />
 
         {/* Tab Navigation */}
-        <div className="flex items-center gap-8 relative">
+        <div className="order-3 flex w-full items-center gap-6 overflow-x-auto border-y border-gray-900 py-2 lg:order-none lg:w-auto lg:gap-8 lg:overflow-visible lg:border-0 lg:py-0">
           {tabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id)}
               className={`
-                  relative py-2 text-base font-medium transition-colors duration-300
+                  relative shrink-0 py-2 text-base font-medium transition-colors duration-300
                   ${activeTab === tab.id ? 'text-teal-400' : 'text-gray-500 hover:text-gray-300'}
                 `}
             >
@@ -51,7 +53,7 @@ export function Header({ activeTab, setActiveTab, tabs }: HeaderProps) {
         </div>
 
         {/* User & Actions */}
-        <div className="flex items-center justify-end gap-4">
+        <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-4">
           {/* Sound Dropdown - Moved here */}
           <SoundDropdown />
 

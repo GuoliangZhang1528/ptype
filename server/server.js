@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 const { Server } = require('socket.io')
 
 const io = new Server(4000, {
@@ -8,7 +9,7 @@ const io = new Server(4000, {
 })
 
 // Store room state
-// rooms = { [roomId]: { players: { [socketId]: { id, username, wpm, progress } }, status: 'waiting' | 'playing' | 'finished', text: "..." } }
+// rooms = { [roomId]: { players: { [socketId]: { id, username, wpm, progress, correctChars } }, status: 'waiting' | 'playing' | 'finished', config } }
 const rooms = new Map()
 
 // Helper to broadcast room list
@@ -19,9 +20,10 @@ const broadcastRooms = () => {
       publicRooms.push({
         id: room.id,
         host: room.players[room.host]?.username || 'Unknown',
-        mode: room.config.mode,
-        difficulty: room.config.difficulty,
+        mode: room.config?.mode || 'race',
+        difficulty: room.config?.difficulty || 'medium',
         playerCount: Object.keys(room.players).length,
+        config: room.config,
       })
     }
   })
@@ -36,7 +38,12 @@ io.on('connection', (socket) => {
     broadcastRooms()
   })
 
-  socket.on('create_room', ({ username, mode, difficulty }) => {
+  socket.on('create_room', ({ username, config }) => {
+    if (!config?.text) {
+      socket.emit('error', { message: 'Invalid room config' })
+      return
+    }
+
     const roomId = Math.random().toString(36).substring(2, 8).toUpperCase()
 
     rooms.set(roomId, {
@@ -47,16 +54,29 @@ io.on('connection', (socket) => {
           username,
           wpm: 0,
           progress: 0,
+          correctChars: 0,
           ready: false,
         },
       },
       status: 'waiting',
-      config: { mode, difficulty },
+      config: {
+        mode: config.mode || 'race',
+        timeLimit: config.timeLimit || 60,
+        difficulty: config.difficulty || 'medium',
+        text: config.text,
+        language: config.language || 'english',
+      },
       host: socket.id,
+      countdown: null,
+      timer: null,
     })
 
     socket.join(roomId)
-    socket.emit('room_created', { roomId, players: rooms.get(roomId).players })
+    socket.emit('room_created', {
+      roomId,
+      players: rooms.get(roomId).players,
+      config: rooms.get(roomId).config,
+    })
     console.log(`Room ${roomId} created by ${username}`)
     broadcastRooms()
   })
@@ -84,15 +104,23 @@ io.on('connection', (socket) => {
       username,
       wpm: 0,
       progress: 0,
+      correctChars: 0,
       ready: false,
     }
     socket.join(roomId)
 
     // IMPORTANT: Send full state to the new joiner so they see the Host
-    socket.emit('room_joined', { roomId, players: room.players })
+    socket.emit('room_joined', {
+      roomId,
+      players: room.players,
+      config: room.config,
+    })
 
     // Notify others
-    io.to(roomId).emit('player_joined', { players: room.players })
+    io.to(roomId).emit('player_joined', {
+      players: room.players,
+      config: room.config,
+    })
     console.log(`${username} joined room ${roomId}`)
     broadcastRooms()
   })
@@ -111,30 +139,31 @@ io.on('connection', (socket) => {
     const allReady = Object.values(room.players).every((p) => p.ready)
     const playerCount = Object.keys(room.players).length
 
-    if (allReady && playerCount === 2) {
+    if (allReady && playerCount === 2 && !room.countdown) {
       // Start countdown
       console.log(`Room ${roomId} starting...`)
       let count = 3
-      const countdown = setInterval(() => {
+      room.countdown = setInterval(() => {
         io.to(roomId).emit('countdown', count)
         count--
 
         if (count < 0) {
-          clearInterval(countdown)
-          room.status = 'playing'
-          io.to(roomId).emit('game_start', { startTime: Date.now() })
+          clearInterval(room.countdown)
+          room.countdown = null
+          handleStartGame(roomId)
         }
       }, 1000)
     }
   })
 
-  socket.on('update_progress', ({ roomId, wpm, progress }) => {
+  socket.on('update_progress', ({ roomId, wpm, progress, correctChars }) => {
     const room = rooms.get(roomId)
     if (!room || room.status !== 'playing') return
 
     if (room.players[socket.id]) {
       room.players[socket.id].wpm = wpm
       room.players[socket.id].progress = progress
+      room.players[socket.id].correctChars = correctChars || 0
     }
 
     // Broadcast to everyone in room (including self, to simplify sync)
@@ -142,8 +171,7 @@ io.on('connection', (socket) => {
 
     // Check win condition
     if (progress >= 100) {
-      room.status = 'finished'
-      io.to(roomId).emit('game_over', { winner: socket.id })
+      finishGame(roomId, socket.id)
     }
   })
 
@@ -170,12 +198,18 @@ function handleLeave(socket, roomId) {
     if (Object.keys(room.players).length === 0) {
       rooms.delete(roomId)
       if (room.timer) clearTimeout(room.timer)
+      if (room.countdown) clearInterval(room.countdown)
     } else {
+      if (room.countdown) {
+        clearInterval(room.countdown)
+        room.countdown = null
+      }
       io.to(roomId).emit('player_left', { players: room.players })
       if (room.status === 'playing') {
         io.to(roomId).emit('opponent_disconnected')
         room.status = 'finished'
         if (room.timer) clearTimeout(room.timer)
+        if (room.countdown) clearInterval(room.countdown)
       }
     }
     // Broadcast updates to lobby
@@ -189,7 +223,7 @@ function handleStartGame(roomId) {
 
   room.status = 'playing'
   const startTime = Date.now()
-  io.to(roomId).emit('game_start', { startTime })
+  io.to(roomId).emit('game_start', { startTime, config: room.config })
 
   // Time Attack Mode Logic
   if (room.config.mode === 'time') {
@@ -202,7 +236,9 @@ function handleStartGame(roomId) {
       // Sort by correctChars descending
       players.sort((a, b) => (b.correctChars || 0) - (a.correctChars || 0))
 
-      const winnerId = players[0]?.id // Simple tie-break: first one sorted
+      const topScore = players[0]?.correctChars || 0
+      const isTie = players.filter((p) => (p.correctChars || 0) === topScore).length > 1
+      const winnerId = isTie ? null : players[0]?.id
       finishGame(roomId, winnerId)
     }, limitMs)
   }

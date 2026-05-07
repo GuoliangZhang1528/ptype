@@ -85,6 +85,10 @@
       "coder": "多语言代码片段",
       "custom": "使用您自己的文本"
     },
+    "chineseStyleLabels": {
+      "modern": "现代文",
+      "classical": "文言文"
+    },
     "allowBackspace": "允许退格",
     "caseSensitive": "区分大小写",
     "ignorePunctuation": "忽略标点",
@@ -104,6 +108,7 @@
     "cancel": "取消",
     "titleAndContentRequired": "标题和内容不能为空",
     "soundEnabled": "机械音效",
+    "soundType": "轴体类型",
     "soundTypeLabels": {
       "cherry-blue": "青轴",
       "cherry-red": "红轴"
@@ -179,7 +184,8 @@
         "roomNotFound": "房间不存在",
         "roomFull": "房间已满",
         "gameStarted": "比赛已开始",
-        "opponentDisconnected": "对手已断开连接"
+        "opponentDisconnected": "对手已断开连接",
+        "invalidRoomConfig": "房间配置无效"
       },
       "languages": {
         "python": "Python",
@@ -209,6 +215,8 @@
       "you": "你",
       "winner": "获胜！",
       "tie": "平局！",
+      "winMessage": "打得不错！",
+      "loseMessage": "下次再赢回来。",
       "spectating": "观战中",
       "leave": "离开房间",
       "ready": "准备",

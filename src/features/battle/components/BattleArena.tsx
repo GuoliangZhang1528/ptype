@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { useTranslations } from 'next-intl'
 import {
   BattlePlayer,
@@ -12,11 +12,9 @@ import { useTypingEngine } from '@/features/typing-test/hooks/useTypingEngine'
 
 // Need to reuse TextDisplay logic but hook it up to socket progress
 interface BattleArenaProps {
-  roomId: string
   players: Record<string, BattlePlayer>
   status: BattleState
   countdown: number | null
-  startTime: number | null
   winner: string | null
   myId: string
   onReady: (ready: boolean) => void
@@ -30,11 +28,9 @@ interface BattleArenaProps {
 }
 
 export function BattleArena({
-  roomId,
   players,
   status,
   countdown,
-  startTime,
   winner,
   myId,
   onReady,
@@ -44,11 +40,11 @@ export function BattleArena({
 }: BattleArenaProps) {
   const t = useTranslations('Battle.arena')
   // Use existing engine
-  const { restart, inputHandlers } = useTypingEngine()
+  const { inputHandlers } = useTypingEngine()
   const {
     wpm,
     status: engineStatus,
-    targetText,
+    displayText,
     typedText,
     initTest,
     updateSettings,
@@ -56,14 +52,6 @@ export function BattleArena({
   } = useTypingStore()
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const progress =
-    targetText.length > 0 ? (typedText.length / targetText.length) * 100 : 0
-
-  // Fallback to find "me" if myId logic is shaky, but players[socket.id] is standard
-  console.log('BattleArena Render:', {
-    myId,
-    playersKeys: Object.keys(players),
-  })
   const opponent = Object.values(players).find((p) => p.id !== myId)
 
   // Initialize Game Config (Text & Mode)
@@ -75,7 +63,7 @@ export function BattleArena({
       updateSettings({
         mode: 'custom',
         customText: config.text,
-        duration: config.mode === 'time' ? config.timeLimit : 0,
+        duration: config.mode === 'time' ? config.timeLimit : 9999,
       })
 
       // 2. Init Test to apply text
@@ -88,13 +76,15 @@ export function BattleArena({
     if (status === 'playing' && engineStatus === 'running') {
       // Recalculate progress based on latest state
       const currentProgress =
-        targetText.length > 0 ? (typedText.length / targetText.length) * 100 : 0
+        displayText.length > 0
+          ? (typedText.length / displayText.length) * 100
+          : 0
       onUpdateProgress(wpm, currentProgress, correctChars)
     }
   }, [
     wpm,
     typedText,
-    targetText,
+    displayText,
     correctChars,
     status,
     engineStatus,
@@ -109,17 +99,6 @@ export function BattleArena({
       setTimeout(() => inputRef.current?.focus(), 100)
     }
   }, [status])
-
-  // Handle inputs
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (status !== 'playing') return
-    inputHandlers.onKeyDown(e)
-  }
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (status !== 'playing') return
-    inputHandlers.onChange(e)
-  }
 
   return (
     <div className="w-full max-w-6xl mx-auto py-8 flex flex-col gap-8 h-[600px] relative">
@@ -204,7 +183,7 @@ export function BattleArena({
                     : t('tie')}
               </h2>
               <p className="text-gray-400">
-                {winner === myId ? `Good Job!` : `Better luck next time!`}
+                {winner === myId ? t('winMessage') : t('loseMessage')}
               </p>
               <button
                 onClick={onLeave}
@@ -231,19 +210,6 @@ export function BattleArena({
         ) : (
           <>
             <TextDisplay inputRef={inputRef} inputHandlers={inputHandlers} />
-            {/* Hidden Input for Typing */}
-            <input
-              ref={inputRef}
-              type="text"
-              className="absolute opacity-0 top-0 left-0 w-full h-full cursor-default"
-              autoFocus
-              onKeyDown={handleKeyDown}
-              onChange={handleChange}
-              onBlur={() => {
-                // Keep focus if playing
-                if (status === 'playing') inputRef.current?.focus()
-              }}
-            />
           </>
         )}
       </div>

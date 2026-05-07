@@ -128,6 +128,12 @@ export function useTypingEngine() {
     [updateSettings]
   )
 
+  const startIfIdle = useCallback(() => {
+    if (useTypingStore.getState().status === 'idle') {
+      startTest()
+    }
+  }, [startTest])
+
   // Input change handler - 处理输入法确认后的输入
   const handleInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -152,6 +158,7 @@ export function useTypingEngine() {
 
         // 逐个字符添加
         for (const char of newChars) {
+          startIfIdle()
           if (char === ' ') playSpace()
           else if (char === '\n') playEnter()
           else playClick()
@@ -172,7 +179,16 @@ export function useTypingEngine() {
       e.target.value = ''
       inputValueRef.current = ''
     },
-    [status, handleInput, handleBackspace]
+    [
+      status,
+      handleInput,
+      handleBackspace,
+      startIfIdle,
+      playSpace,
+      playEnter,
+      playClick,
+      playBackspace,
+    ]
   )
 
   // Composition event handlers
@@ -195,6 +211,7 @@ export function useTypingEngine() {
       if (data) {
         // 逐个字符添加
         for (const char of data) {
+          startIfIdle()
           // 中文输入一般当作普通点击，或者 specialized sound?
           // 暂时统一用 click，空格可能会比较少见
           playClick()
@@ -207,7 +224,7 @@ export function useTypingEngine() {
       target.value = ''
       inputValueRef.current = ''
     },
-    [status, handleInput]
+    [status, handleInput, startIfIdle, playClick]
   )
 
   // KeyDown handler - 处理特殊键
@@ -232,19 +249,24 @@ export function useTypingEngine() {
         const indent = getIndentToConsume(displayText, typedText.length, 2)
         if (indent) {
           for (const char of indent) {
+            startIfIdle()
             playSpace()
             handleInput(char)
           }
         } else {
           // 如果目标不是缩进，则按默认插入空格（仅代码模式支持默认插入）
           if (settings.mode === 'coder') {
-            playSpace(); playSpace()
-            handleInput(' '); handleInput(' ')
+            startIfIdle()
+            playSpace()
+            playSpace()
+            handleInput(' ')
+            handleInput(' ')
           }
         }
         
         const target = e.target as HTMLInputElement
-        target.value = ''; inputValueRef.current = ''
+        target.value = ''
+        inputValueRef.current = ''
         return
       }
 
@@ -261,6 +283,7 @@ export function useTypingEngine() {
       // 处理 Enter 换行
       if (e.key === 'Enter') {
         e.preventDefault()
+        startIfIdle()
         playEnter()
         handleInput('\n')
         
@@ -274,11 +297,23 @@ export function useTypingEngine() {
         }
         
         const target = e.target as HTMLInputElement
-        target.value = ''; inputValueRef.current = ''
+        target.value = ''
+        inputValueRef.current = ''
         return
       }
     },
-    [status, settings.mode, handleBackspace, handleInput, displayText, typedText]
+    [
+      status,
+      settings.mode,
+      handleBackspace,
+      handleInput,
+      displayText,
+      typedText,
+      startIfIdle,
+      playSpace,
+      playBackspace,
+      playEnter,
+    ]
   )
 
   return {

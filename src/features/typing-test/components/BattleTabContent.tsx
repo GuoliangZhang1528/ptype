@@ -2,11 +2,10 @@
 import { useBattleSocket } from '@/features/battle/hooks/useBattleSocket'
 import { BattleLobby } from '@/features/battle/components/BattleLobby'
 import { BattleArena } from '@/features/battle/components/BattleArena'
-import { useState } from 'react'
+import type { User } from '@/features/auth/types'
 
-export function BattleTabContent({ user }: { user: any }) {
+export function BattleTabContent({ user }: { user: User | null }) {
   const {
-    socket,
     socketId,
     roomId,
     status,
@@ -14,7 +13,6 @@ export function BattleTabContent({ user }: { user: any }) {
     gameConfig,
     rooms,
     countdown,
-    startTime,
     winner,
     error,
     createRoom,
@@ -39,11 +37,9 @@ export function BattleTabContent({ user }: { user: any }) {
 
   return (
     <BattleArena
-      roomId={roomId}
       players={players}
       status={status}
       countdown={countdown}
-      startTime={startTime}
       winner={winner}
       myId={socketId || ''}
       onReady={setReady}

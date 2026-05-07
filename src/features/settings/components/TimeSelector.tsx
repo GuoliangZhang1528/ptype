@@ -38,12 +38,14 @@ export function TimeSelector({
       duration as (typeof DURATION_OPTIONS)[number]
     )
     if (!isStandard && duration > 0 && savedCustom !== duration) {
-      setSavedCustom(duration)
+      queueMicrotask(() => setSavedCustom(duration))
     }
   }, [duration, savedCustom])
 
   const isCustomActive =
-    !DURATION_OPTIONS.includes(duration as any) && duration === savedCustom
+    !DURATION_OPTIONS.includes(
+      duration as (typeof DURATION_OPTIONS)[number]
+    ) && duration === savedCustom
 
   const handleCustomClick = () => {
     if (savedCustom === 0) {

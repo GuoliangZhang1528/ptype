@@ -64,7 +64,8 @@ export function SoundDropdown() {
             className={`w-8 h-4 rounded-full relative transition-colors ${soundEnabled ? 'bg-teal-500' : 'bg-gray-600'}`}
           >
             <div
-              className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${soundEnabled ? 'left-4.5' : 'left-0.5'}`}
+              className="absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all"
+              style={{ left: soundEnabled ? '1.125rem' : '0.125rem' }}
             />
           </div>
         </DropdownItem>
@@ -73,10 +74,7 @@ export function SoundDropdown() {
           <>
             <DropdownDivider />
             <div className="px-4 py-1.5 text-xs font-semibold text-gray-500 uppercase">
-              {t('chineseStyle')}{' '}
-              {/* Reusing a general "Style" label if available or just generic */}
-              {/* Or better, verify zh.json/en.json for appropriate label. "Switch Type" isn't there, but "soundTypeLabels" keys are. */}
-              Switch Type
+              {t('soundType')}
             </div>
 
             <DropdownItem

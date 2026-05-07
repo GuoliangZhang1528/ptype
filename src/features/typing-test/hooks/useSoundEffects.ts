@@ -52,14 +52,14 @@ export function useSoundEffects() {
       try {
         const sound = audio.cloneNode() as HTMLAudioElement
         sound.volume = soundVolume
-        sound.play().catch((e) => {
+        sound.play().catch(() => {
           // Ignore auto-play errors or missing file errors to prevent crashing
           if (process.env.NODE_ENV === 'development') {
             // console.warn('Sound play failed:', e);
           }
         })
-      } catch (e) {
-        console.error('Error playing sound', e)
+      } catch (error) {
+        console.error('Error playing sound', error)
       }
     },
     [soundEnabled, soundType, soundVolume]

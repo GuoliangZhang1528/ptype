@@ -85,6 +85,10 @@
       "coder": "Multi-language code",
       "custom": "Your own text"
     },
+    "chineseStyleLabels": {
+      "modern": "Modern",
+      "classical": "Classical"
+    },
     "allowBackspace": "Allow Backspace",
     "caseSensitive": "Case Sensitive",
     "ignorePunctuation": "Ignore Punctuation",
@@ -104,6 +108,7 @@
     "cancel": "Cancel",
     "titleAndContentRequired": "Title and content required",
     "soundEnabled": "Mech Sound",
+    "soundType": "Switch Type",
     "soundTypeLabels": {
       "cherry-blue": "Blue Switch",
       "cherry-red": "Red Switch"
@@ -179,7 +184,8 @@
         "roomNotFound": "Room not found",
         "roomFull": "Room is full",
         "gameStarted": "Game already started",
-        "opponentDisconnected": "Opponent disconnected"
+        "opponentDisconnected": "Opponent disconnected",
+        "invalidRoomConfig": "Invalid room config"
       },
       "languages": {
         "python": "Python",
@@ -209,6 +215,8 @@
       "you": "You",
       "winner": "Winner!",
       "tie": "It's a Tie!",
+      "winMessage": "Good job!",
+      "loseMessage": "Better luck next time.",
       "spectating": "Spectating",
       "leave": "Leave Room",
       "ready": "Ready",

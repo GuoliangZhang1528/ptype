@@ -2,6 +2,11 @@
 
 import { prisma } from '@/lib/prisma'
 import { getUserId } from '@/lib/auth'
+import type { Prisma } from '@prisma/client'
+
+type UserSettings = Prisma.JsonObject & {
+  customDuration?: number
+}
 
 export async function saveCustomDuration(duration: number) {
   try {
@@ -13,7 +18,7 @@ export async function saveCustomDuration(duration: number) {
       select: { settings: true },
     })
 
-    const currentSettings = (user?.settings as Record<string, any>) || {}
+    const currentSettings = (user?.settings as UserSettings | null) || {}
 
     await prisma.user.update({
       where: { id: userId },
@@ -43,7 +48,7 @@ export async function getUserSettings() {
     })
 
     return { success: true, settings: user?.settings }
-  } catch (error) {
+  } catch {
     return { success: false, error: 'Failed' }
   }
 }

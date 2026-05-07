@@ -47,7 +47,18 @@ fi
 echo "✅ Database sync complete!"
 
 # 启动应用
+echo "⚔️ Starting Socket.io battle server..."
+node server/server.js &
+SOCKET_PID=$!
+
+trap 'kill "$SOCKET_PID" "$NEXT_PID" 2>/dev/null || true' EXIT INT TERM
+
 echo "🌐 Starting Next.js server..."
-exec node server.js
+node server.js &
+NEXT_PID=$!
 
-
+wait "$NEXT_PID"
+STATUS=$?
+kill "$SOCKET_PID" 2>/dev/null || true
+wait "$SOCKET_PID" 2>/dev/null || true
+exit "$STATUS"

@@ -275,7 +275,7 @@ export const useTypingStore = create<TypingState>((set, get) => ({
 
   // 处理输入
   handleInput: (char: string) => {
-    const { status, displayText, typedText, settings, previewText } = get()
+    const { status, displayText, typedText, previewText } = get()
 
     if (status === 'finished') return
 

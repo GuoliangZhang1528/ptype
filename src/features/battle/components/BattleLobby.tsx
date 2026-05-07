@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslations } from 'next-intl'
 import { BattleConfig, BattleRoom } from '../hooks/useBattleSocket'
@@ -7,6 +7,7 @@ import {
   CHINESE_STYLE_OPTIONS,
   PROGRAMMING_LANGUAGE_OPTIONS,
   ChineseStyle,
+  DifficultyLevel,
   ProgrammingLanguage,
   DEFAULT_CHINESE_STYLE,
   DEFAULT_PROGRAMMING_LANGUAGE,
@@ -144,7 +145,7 @@ function Toast({ message, onClose }: { message: string; onClose: () => void }) {
 }
 
 interface BattleLobbyProps {
-  onCreate: (config: Partial<BattleConfig>) => void
+  onCreate: (config: BattleConfig) => void
   onJoin: (roomId: string) => void
   onRefresh: () => void
   rooms: BattleRoom[]
@@ -161,31 +162,26 @@ export function BattleLobby({
   const t = useTranslations('Battle')
   const [roomIdInput, setRoomIdInput] = useState('')
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const [localError, setLocalError] = useState<string | null>(null)
+  const [dismissedError, setDismissedError] = useState<string | null>(null)
 
-  // Sync prop error to local state with translation
-  useEffect(() => {
-    if (error) {
-      let translatedError = error
-      const errorMap: Record<string, string> = {
-        'Room not found': 'roomNotFound',
-        'Room is full': 'roomFull',
-        'Game already started': 'gameStarted',
-        'Opponent disconnected': 'opponentDisconnected',
-      }
+  const translatedError = useMemo(() => {
+    if (!error || dismissedError === error) return null
 
-      if (errorMap[error]) {
-        translatedError = t(`modal.errors.${errorMap[error]}`)
-      }
-
-      setLocalError(translatedError)
+    const errorMap: Record<string, string> = {
+      'Room not found': 'roomNotFound',
+      'Room is full': 'roomFull',
+      'Game already started': 'gameStarted',
+      'Opponent disconnected': 'opponentDisconnected',
+      'Invalid room config': 'invalidRoomConfig',
     }
-  }, [error, t])
+
+    return errorMap[error] ? t(`modal.errors.${errorMap[error]}`) : error
+  }, [error, dismissedError, t])
 
   // Create Room State
   const [mode, setMode] = useState<'race' | 'time'>('race')
   const [timeLimit, setTimeLimit] = useState(60)
-  const [difficulty, setDifficulty] = useState('medium')
+  const [difficulty, setDifficulty] = useState<DifficultyLevel>('medium')
   const [textSource, setTextSource] = useState<
     'english' | 'chinese' | 'coder' | 'custom'
   >('english')
@@ -202,20 +198,24 @@ export function BattleLobby({
 
   // Load custom texts
   useEffect(() => {
-    if (isAuthenticated) {
-      getCustomTexts().then((res) => {
-        if (res.success && res.data) {
-          setSavedTexts(res.data)
-          // Default to first text if available and mode is custom
-          if (res.data.length > 0 && !customText) {
-            setCustomText(res.data[0].content)
-          }
+    const loadTexts = async () => {
+      if (!isAuthenticated) {
+        setSavedTexts([])
+        return
+      }
+
+      const res = await getCustomTexts()
+      if (res.success && res.data) {
+        setSavedTexts(res.data)
+        // Default to first text if available and mode is custom
+        if (res.data.length > 0 && !customText) {
+          setCustomText(res.data[0].content)
         }
-      })
-    } else {
-      setSavedTexts([])
+      }
     }
-  }, [isAuthenticated])
+
+    loadTexts()
+  }, [isAuthenticated, customText])
 
   const handleCreate = () => {
     let text = customText
@@ -224,8 +224,8 @@ export function BattleLobby({
     if (textSource !== 'custom') {
       // Generate based on selection
       text = generateText(
-        textSource as any,
-        difficulty as any,
+        textSource,
+        difficulty,
         500,
         chineseStyle,
         programmingLanguage
@@ -297,7 +297,7 @@ export function BattleLobby({
                     {['easy', 'medium', 'hard'].map((d) => (
                       <button
                         key={d}
-                        onClick={() => setDifficulty(d)}
+                        onClick={() => setDifficulty(d as DifficultyLevel)}
                         className={`flex-1 p-2 rounded-lg border text-sm font-medium transition-all capitalize ${difficulty === d ? 'bg-gray-700 border-teal-500 text-teal-400' : 'bg-gray-800 border-gray-700 text-gray-500'}`}
                       >
                         {d}
@@ -335,7 +335,7 @@ export function BattleLobby({
                     {/* Dropdown 1: Source */}
                     <Select
                       value={textSource}
-                      onChange={(val) => setTextSource(val as any)}
+                      onChange={setTextSource}
                       options={[
                         { value: 'english', label: t('modal.sources.english') },
                         { value: 'chinese', label: t('modal.sources.chinese') },
@@ -458,8 +458,11 @@ export function BattleLobby({
       </motion.div>
 
       <AnimatePresence>
-        {localError && (
-          <Toast message={localError} onClose={() => setLocalError(null)} />
+        {translatedError && error && (
+          <Toast
+            message={translatedError}
+            onClose={() => setDismissedError(error)}
+          />
         )}
       </AnimatePresence>
 

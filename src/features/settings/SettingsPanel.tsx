@@ -14,8 +14,7 @@ import { useTranslations } from 'next-intl'
 import {
   TimeSelector,
   ModeSelector,
-  DifficultySelector, // Added back
-  SoundSelector, // keep import if it was re-exported
+  DifficultySelector,
   ModeSpecificOptions,
 } from './components'
 

@@ -15,9 +15,6 @@ import { useTypingEngine } from '@/features/typing-test/hooks/useTypingEngine'
 import { saveTypingResult } from '@/features/history/actions'
 import { sign } from '@/lib/security'
 import { useTranslations } from 'next-intl'
-import { useBattleSocket } from '@/features/battle/hooks/useBattleSocket'
-import { BattleLobby } from '@/features/battle/components/BattleLobby'
-import { BattleArena } from '@/features/battle/components/BattleArena'
 import { BattleTabContent } from '@/features/typing-test/components/BattleTabContent'
 
 // Lazy Load Heavy Components to optimize initial render and bundle size
@@ -67,7 +64,7 @@ function TabLoading() {
 }
 
 export function TypingTest() {
-  const { openAuthModal, user, isAuthenticated, logout } = useAuthStore()
+  const { user } = useAuthStore()
 
   // 只获取必要的 action 和 状态
   // status 用于切换视图
@@ -173,6 +170,7 @@ export function TypingTest() {
 
   // i18n
   const t = useTranslations('Navigation')
+  const tStats = useTranslations('Stats')
 
   const tabs = [
     { id: 'practice', label: t('practice') },
@@ -216,7 +214,7 @@ export function TypingTest() {
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
                         >
-                          停止并重新开始
+                          {tStats('stopAndRestart')}
                         </motion.button>
                       ) : null
                     }

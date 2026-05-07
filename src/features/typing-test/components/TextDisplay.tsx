@@ -5,7 +5,6 @@ import {
   useMemo,
   useRef,
   useEffect,
-  useState,
   useLayoutEffect,
 } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -28,11 +27,9 @@ interface TextDisplayProps {
 const Character = memo(function Character({
   char,
   status,
-  isCurrent,
 }: {
   char: string
   status: 'pending' | 'correct' | 'incorrect' | 'current'
-  isCurrent: boolean
 }) {
   const baseClass = 'inline-block transition-colors duration-100 relative'
 
@@ -134,7 +131,7 @@ export function TextDisplay({ inputRef, inputHandlers }: TextDisplayProps) {
         cursorOverlayRef.current.style.display = 'none'
       }
     }
-  }, [typedText, status, previewText, allLines]) // Re-run when layout potentially changes
+  }, [typedText, status, previewText, allLines, inputRef]) // Re-run when layout potentially changes
 
   // 计算每个字符的状态 - 移除原有的大数组 map，改为渲染时计算
   // 保持 normalized 字符串缓存
@@ -215,7 +212,7 @@ export function TextDisplay({ inputRef, inputHandlers }: TextDisplayProps) {
       const isCurrent = charStatus === 'current'
       return (
         <span key={globalIndex} ref={isCurrent ? cursorRef : null} className="relative inline-block">
-          <Character char={displayChar} status={charStatus} isCurrent={isCurrent} />
+          <Character char={displayChar} status={charStatus} />
           {isCurrent && previewText && (
             <span 
               className="absolute left-[1ch] top-0 text-teal-400/60 font-bold animate-pulse pointer-events-none"
@@ -242,7 +239,7 @@ export function TextDisplay({ inputRef, inputHandlers }: TextDisplayProps) {
       const isCurrent = newlineStatus === 'current'
       result.push(
         <span key={newlineIndex} ref={isCurrent ? cursorRef : null} className="relative inline-block">
-          <Character char={newlineChar} status={newlineStatus} isCurrent={isCurrent} />
+          <Character char={newlineChar} status={newlineStatus} />
           {isCurrent && previewText && (
             <span 
               className="absolute left-[1ch] top-0 text-teal-400/60 font-bold animate-pulse pointer-events-none"

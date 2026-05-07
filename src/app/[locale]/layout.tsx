@@ -6,13 +6,17 @@ import { getMessages } from 'next-intl/server'
 import { notFound } from 'next/navigation'
 import { routing } from '@/i18n/routing'
 
+const rawBasePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
+const basePath = rawBasePath === '/' ? '' : rawBasePath.replace(/\/+$/, '')
+const logoPath = `${basePath}/logo.png`
+
 export const metadata: Metadata = {
   title: 'PType - Typing Practice',
   description: 'Test and improve your typing speed with PType',
   icons: {
-    icon: [{ url: '/logo.png', sizes: '32x32', type: 'image/png' }],
-    shortcut: ['/logo.png'],
-    apple: ['/logo.png'],
+    icon: [{ url: logoPath, sizes: '32x32', type: 'image/png' }],
+    shortcut: [logoPath],
+    apple: [logoPath],
   },
 }
 

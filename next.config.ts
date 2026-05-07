@@ -22,6 +22,22 @@ const nextConfig: NextConfig = {
     root: __dirname,
   },
   output: 'standalone',
+  async redirects() {
+    if (basePath) return []
+
+    return [
+      {
+        source: '/ptype',
+        destination: '/',
+        permanent: false,
+      },
+      {
+        source: '/ptype/:path*',
+        destination: '/:path*',
+        permanent: false,
+      },
+    ]
+  },
   async rewrites() {
     return [
       {

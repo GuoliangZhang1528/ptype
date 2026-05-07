@@ -198,27 +198,30 @@ export function BattleLobby({
 
   // Load custom texts
   useEffect(() => {
+    let isMounted = true
+
     const loadTexts = async () => {
       if (!isAuthenticated) {
-        setSavedTexts([])
+        if (isMounted) setSavedTexts([])
         return
       }
 
       const res = await getCustomTexts()
-      if (res.success && res.data) {
+      if (isMounted && res.success && res.data) {
         setSavedTexts(res.data)
-        // Default to first text if available and mode is custom
-        if (res.data.length > 0 && !customText) {
-          setCustomText(res.data[0].content)
-        }
       }
     }
 
     loadTexts()
-  }, [isAuthenticated, customText])
+    return () => {
+      isMounted = false
+    }
+  }, [isAuthenticated])
+
+  const selectedCustomText = customText || savedTexts[0]?.content || ''
 
   const handleCreate = () => {
-    let text = customText
+    let text = selectedCustomText
     let language = 'english' // Default language tag
 
     if (textSource !== 'custom') {
@@ -394,7 +397,7 @@ export function BattleLobby({
                         (isAuthenticated ? (
                           savedTexts.length > 0 ? (
                             <Select
-                              value={customText}
+                              value={selectedCustomText}
                               onChange={(val) => setCustomText(val)}
                               options={savedTexts.map((t) => ({
                                 value: t.content,
@@ -435,7 +438,9 @@ export function BattleLobby({
                 </button>
                 <button
                   onClick={handleCreate}
-                  disabled={textSource === 'custom' && !customText.trim()}
+                  disabled={
+                    textSource === 'custom' && !selectedCustomText.trim()
+                  }
                   className="flex-1 px-4 py-3 bg-teal-600 hover:bg-teal-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-lg transition-colors shadow-lg shadow-teal-900/20"
                 >
                   {t('modal.create')}

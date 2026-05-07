@@ -200,6 +200,10 @@ function handleLeave(socket, roomId) {
       if (room.timer) clearTimeout(room.timer)
       if (room.countdown) clearInterval(room.countdown)
     } else {
+      if (room.host === socket.id) {
+        room.host = Object.keys(room.players)[0]
+      }
+
       if (room.countdown) {
         clearInterval(room.countdown)
         room.countdown = null

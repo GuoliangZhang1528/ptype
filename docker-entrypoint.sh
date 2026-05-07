@@ -57,8 +57,28 @@ echo "🌐 Starting Next.js server..."
 node server.js &
 NEXT_PID=$!
 
-wait "$NEXT_PID"
-STATUS=$?
-kill "$SOCKET_PID" 2>/dev/null || true
-wait "$SOCKET_PID" 2>/dev/null || true
-exit "$STATUS"
+while true; do
+  if ! kill -0 "$SOCKET_PID" 2>/dev/null; then
+    set +e
+    wait "$SOCKET_PID"
+    STATUS=$?
+    set -e
+    echo "❌ Socket.io battle server exited with status $STATUS"
+    kill "$NEXT_PID" 2>/dev/null || true
+    wait "$NEXT_PID" 2>/dev/null || true
+    exit "$STATUS"
+  fi
+
+  if ! kill -0 "$NEXT_PID" 2>/dev/null; then
+    set +e
+    wait "$NEXT_PID"
+    STATUS=$?
+    set -e
+    echo "❌ Next.js server exited with status $STATUS"
+    kill "$SOCKET_PID" 2>/dev/null || true
+    wait "$SOCKET_PID" 2>/dev/null || true
+    exit "$STATUS"
+  fi
+
+  sleep 2
+done

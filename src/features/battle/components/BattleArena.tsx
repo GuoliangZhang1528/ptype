@@ -7,7 +7,10 @@ import {
   BattleConfig,
 } from '../hooks/useBattleSocket'
 import { TextDisplay } from '@/features/typing-test/components/TextDisplay'
-import { useTypingStore } from '@/features/typing-test/store/typingStore'
+import {
+  TypingSettings,
+  useTypingStore,
+} from '@/features/typing-test/store/typingStore'
 import { useTypingEngine } from '@/features/typing-test/hooks/useTypingEngine'
 
 // Need to reuse TextDisplay logic but hook it up to socket progress
@@ -51,12 +54,22 @@ export function BattleArena({
     correctChars,
   } = useTypingStore()
   const inputRef = useRef<HTMLInputElement>(null)
+  const previousSettingsRef = useRef<TypingSettings | null>(null)
+  const battleConfigKeyRef = useRef<string | null>(null)
 
   const opponent = Object.values(players).find((p) => p.id !== myId)
 
   // Initialize Game Config (Text & Mode)
   useEffect(() => {
     if (config) {
+      const configKey = `${config.mode}:${config.timeLimit}:${config.text}`
+      if (battleConfigKeyRef.current === configKey) return
+
+      if (!previousSettingsRef.current) {
+        previousSettingsRef.current = useTypingStore.getState().settings
+      }
+      battleConfigKeyRef.current = configKey
+
       console.log('Initializing Arena with config:', config)
 
       // 1. Set Custom Text
@@ -70,6 +83,17 @@ export function BattleArena({
       initTest(true)
     }
   }, [config, updateSettings, initTest])
+
+  useEffect(() => {
+    return () => {
+      const previousSettings = previousSettingsRef.current
+      if (!previousSettings) return
+
+      const store = useTypingStore.getState()
+      store.updateSettings(previousSettings)
+      store.initTest(true)
+    }
+  }, [])
 
   // Sync engine progress to socket
   useEffect(() => {

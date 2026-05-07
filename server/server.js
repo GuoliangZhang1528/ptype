@@ -139,6 +139,13 @@ io.on('connection', (socket) => {
     const allReady = Object.values(room.players).every((p) => p.ready)
     const playerCount = Object.keys(room.players).length
 
+    if (room.countdown && !allReady) {
+      clearInterval(room.countdown)
+      room.countdown = null
+      io.to(roomId).emit('countdown_cancelled')
+      return
+    }
+
     if (allReady && playerCount === 2 && !room.countdown) {
       // Start countdown
       console.log(`Room ${roomId} starting...`)
@@ -207,6 +214,7 @@ function handleLeave(socket, roomId) {
       if (room.countdown) {
         clearInterval(room.countdown)
         room.countdown = null
+        io.to(roomId).emit('countdown_cancelled')
       }
       io.to(roomId).emit('player_left', { players: room.players })
       if (room.status === 'playing') {

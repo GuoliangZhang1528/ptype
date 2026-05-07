@@ -75,6 +75,7 @@ export function useBattleSocket(username: string) {
       setPlayers(players)
       if (config) setGameConfig(config)
       setStatus('waiting')
+      setError(null)
     })
 
     s.on('room_joined', ({ roomId, players, config }) => {
@@ -82,6 +83,7 @@ export function useBattleSocket(username: string) {
       setPlayers(players)
       if (config) setGameConfig(config)
       setStatus('waiting')
+      setError(null)
     })
 
     s.on('player_joined', ({ players }) => {
@@ -95,6 +97,11 @@ export function useBattleSocket(username: string) {
     s.on('countdown', (count) => {
       setStatus('starting')
       setCountdown(count)
+    })
+
+    s.on('countdown_cancelled', () => {
+      setStatus('waiting')
+      setCountdown(null)
     })
 
     s.on('game_start', ({ startTime, config }) => {
@@ -142,6 +149,7 @@ export function useBattleSocket(username: string) {
   const getRooms = useCallback(() => {
     const socket = socketRef.current
     connect()
+    setError(null)
     socket?.emit('get_rooms')
   }, [connect])
 
@@ -149,6 +157,7 @@ export function useBattleSocket(username: string) {
     (config: BattleConfig) => {
       const socket = socketRef.current
       connect()
+      setError(null)
       socket?.emit('create_room', { username, config })
     },
     [username, connect]
@@ -158,6 +167,7 @@ export function useBattleSocket(username: string) {
     (roomId: string) => {
       const socket = socketRef.current
       connect()
+      setError(null)
       socket?.emit('join_room', { roomId, username })
       setWinner(null)
     },

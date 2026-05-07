@@ -51,10 +51,12 @@ export function useBattleSocket(username: string) {
 
   // Connect
   useEffect(() => {
-    // When url is undefined, it defaults to window.location
-    // path defaults to /socket.io/, which matches our proxy
+    const rawBasePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
+    const basePath = rawBasePath === '/' ? '' : rawBasePath.replace(/\/+$/, '')
+
     const s = io(undefined, {
-      path: '/socket.io',
+      path: `${basePath}/socket.io`,
+      addTrailingSlash: false,
       autoConnect: true,
     })
     socketRef.current = s

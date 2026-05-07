@@ -29,6 +29,9 @@ COPY . .
 # 在构建期间禁用遥测
 ENV NEXT_TELEMETRY_DISABLED=1
 
+ARG NEXT_PUBLIC_BASE_PATH=/
+ENV NEXT_PUBLIC_BASE_PATH=${NEXT_PUBLIC_BASE_PATH}
+
 # 设置 Prisma 引擎镜像（加速国内下载）
 ENV PRISMA_ENGINES_MIRROR="https://registry.npmmirror.com/-/binary/prisma"
 

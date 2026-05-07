@@ -1,5 +1,3 @@
-'use server'
-
 /**
  * 高级签名验证器（服务端）
  * 使用纯 JS 实现，与客户端算法匹配
@@ -16,7 +14,7 @@ setInterval(() => {
   usedNonces.clear()
 }, TIME_WINDOW)
 
-interface AdvancedSignaturePayload {
+export interface AdvancedSignaturePayload {
   s: string // signature
   t: number // timestamp
   n: string // nonce
@@ -161,5 +159,3 @@ export async function verifyAdvancedSignature(
 
   return { valid: true }
 }
-
-export type { AdvancedSignaturePayload }

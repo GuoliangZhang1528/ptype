@@ -145,8 +145,11 @@
     "title": "Online Battle Arena",
     "subtitle": "Challenge true typing masters. Join a lobby or create your own.",
     "createRoom": "Create Room",
+    "createPublic": "Public",
     "createPrivate": "Create Private Match",
+    "publicDesc": "List the room so anyone can join",
     "privateDesc": "Host a custom game for friends",
+    "roomId": "Room ID",
     "joinById": "Join by ID",
     "joinBtn": "JOIN",
     "liveRooms": "Live Rooms",
@@ -157,6 +160,8 @@
     "hostRoom": "{host}'s Room",
     "modal": {
       "title": "Create Room",
+      "publicTitle": "Create Public Room",
+      "privateTitle": "Create Private Room",
       "mode": "Game Mode",
       "timeLimit": "Time Limit",
       "difficulty": "Difficulty",
@@ -219,6 +224,7 @@
       "loseMessage": "Better luck next time.",
       "spectating": "Spectating",
       "leave": "Leave Room",
+      "roomId": "Room ID",
       "ready": "Ready",
       "cancelReady": "Cancel Ready"
     }

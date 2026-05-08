@@ -145,8 +145,11 @@
     "title": "在线对战竞技场",
     "subtitle": "挑战真正的打字高手。加入房间或创建您原本的对战。",
     "createRoom": "创建房间",
+    "createPublic": "公开房间",
     "createPrivate": "创建私人对局",
+    "publicDesc": "公开显示在房间列表，任何人都可加入",
     "privateDesc": "与好友进行自定义对战",
+    "roomId": "房间号",
     "joinById": "通过 ID 加入",
     "joinBtn": "加入",
     "liveRooms": "正在进行的房间",
@@ -157,6 +160,8 @@
     "hostRoom": "{host} 的房间",
     "modal": {
       "title": "创建房间",
+      "publicTitle": "创建公开房间",
+      "privateTitle": "创建私人房间",
       "mode": "游戏模式",
       "timeLimit": "时间限制",
       "difficulty": "难度",
@@ -219,6 +224,7 @@
       "loseMessage": "下次再赢回来。",
       "spectating": "观战中",
       "leave": "离开房间",
+      "roomId": "房间号",
       "ready": "准备",
       "cancelReady": "取消准备"
     }

@@ -162,6 +162,7 @@ export function BattleLobby({
   const t = useTranslations('Battle')
   const [roomIdInput, setRoomIdInput] = useState('')
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [isPrivateRoom, setIsPrivateRoom] = useState(false)
   const [dismissedError, setDismissedError] = useState<string | null>(null)
 
   const translatedError = useMemo(() => {
@@ -242,8 +243,14 @@ export function BattleLobby({
       difficulty,
       text,
       language,
+      isPrivate: isPrivateRoom,
     })
     setShowCreateModal(false)
+  }
+
+  const openCreateModal = (isPrivate: boolean) => {
+    setIsPrivateRoom(isPrivate)
+    setShowCreateModal(true)
   }
 
   return (
@@ -266,7 +273,7 @@ export function BattleLobby({
               onClick={(e) => e.stopPropagation()}
             >
               <h3 className="text-2xl font-bold text-teal-400 mb-6">
-                {t('modal.title')}
+                {isPrivateRoom ? t('modal.privateTitle') : t('modal.publicTitle')}
               </h3>
 
               <div className="space-y-6">
@@ -497,16 +504,24 @@ export function BattleLobby({
             </div>
             <div className="text-center">
               <h3 className="text-xl font-bold text-gray-200">
-                {t('createPrivate')}
+                {t('createRoom')}
               </h3>
-              <p className="text-sm text-gray-500 mt-1">{t('privateDesc')}</p>
+              <p className="text-sm text-gray-500 mt-1">{t('publicDesc')}</p>
             </div>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="w-full px-6 py-3 bg-teal-600 hover:bg-teal-500 text-white font-bold rounded-lg transition-colors shadow-lg shadow-teal-900/20"
-            >
-              {t('createRoom')}
-            </button>
+            <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2">
+              <button
+                onClick={() => openCreateModal(false)}
+                className="px-5 py-3 bg-teal-600 hover:bg-teal-500 text-white font-bold rounded-lg transition-colors shadow-lg shadow-teal-900/20"
+              >
+                {t('createPublic')}
+              </button>
+              <button
+                onClick={() => openCreateModal(true)}
+                className="px-5 py-3 bg-gray-800 hover:bg-gray-700 text-gray-200 font-bold rounded-lg transition-colors border border-gray-700"
+              >
+                {t('createPrivate')}
+              </button>
+            </div>
           </motion.div>
 
           {/* Join by ID */}
@@ -628,7 +643,7 @@ export function BattleLobby({
                   </div>
                   <p>{t('noRooms')}</p>
                   <button
-                    onClick={() => setShowCreateModal(true)}
+                    onClick={() => openCreateModal(false)}
                     className="text-teal-400 hover:underline"
                   >
                     {t('beFirst')}
@@ -660,7 +675,7 @@ export function BattleLobby({
                           </span>
                         </div>
                         <div className="text-xs text-gray-500 font-mono mt-1">
-                          ID: {room.id}
+                          {t('roomId')}: {room.id}
                         </div>
                       </div>
                     </div>

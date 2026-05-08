@@ -37,6 +37,7 @@ export function BattleTabContent({ user }: { user: User | null }) {
 
   return (
     <BattleArena
+      roomId={roomId}
       players={players}
       status={status}
       countdown={countdown}

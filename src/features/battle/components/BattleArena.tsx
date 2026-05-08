@@ -15,6 +15,7 @@ import { useTypingEngine } from '@/features/typing-test/hooks/useTypingEngine'
 
 // Need to reuse TextDisplay logic but hook it up to socket progress
 interface BattleArenaProps {
+  roomId: string
   players: Record<string, BattlePlayer>
   status: BattleState
   countdown: number | null
@@ -31,6 +32,7 @@ interface BattleArenaProps {
 }
 
 export function BattleArena({
+  roomId,
   players,
   status,
   countdown,
@@ -46,6 +48,7 @@ export function BattleArena({
   const { inputHandlers } = useTypingEngine()
   const {
     wpm,
+    cpm,
     status: engineStatus,
     displayText,
     typedText,
@@ -57,7 +60,14 @@ export function BattleArena({
   const previousSettingsRef = useRef<TypingSettings | null>(null)
   const battleConfigKeyRef = useRef<string | null>(null)
 
+  const myPlayer = players[myId]
   const opponent = Object.values(players).find((p) => p.id !== myId)
+  const myDisplayName = myPlayer?.username || 'Player'
+  const opponentDisplayName = opponent?.username || t('opponent')
+  const myInitial = myDisplayName.slice(0, 1).toUpperCase()
+  const opponentInitial = opponentDisplayName.slice(0, 1).toUpperCase()
+
+  const localBattleWpm = wpm > 0 ? wpm : Math.round(cpm / 5)
 
   // Initialize Game Config (Text & Mode)
   useEffect(() => {
@@ -101,12 +111,12 @@ export function BattleArena({
       // Recalculate progress based on latest state
       const currentProgress =
         displayText.length > 0
-          ? (typedText.length / displayText.length) * 100
+          ? (correctChars / displayText.length) * 100
           : 0
-      onUpdateProgress(wpm, currentProgress, correctChars)
+      onUpdateProgress(localBattleWpm, currentProgress, correctChars)
     }
   }, [
-    wpm,
+    localBattleWpm,
     typedText,
     displayText,
     correctChars,
@@ -126,21 +136,31 @@ export function BattleArena({
 
   return (
     <div className="w-full max-w-6xl mx-auto py-8 flex flex-col gap-8 h-[600px] relative">
+      <div className="flex items-center justify-center gap-3 text-sm text-gray-400">
+        <span>{t('roomId')}</span>
+        <span className="rounded-lg border border-gray-700 bg-gray-900 px-3 py-1 font-mono text-base font-bold tracking-[0.18em] text-teal-300">
+          {roomId}
+        </span>
+      </div>
+
       {/* Header: Scoreboard */}
       <div className="flex justify-between items-center bg-gray-900/50 p-4 rounded-xl border border-gray-800">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-full bg-teal-500/20 flex items-center justify-center text-teal-400 font-bold">
-            {t('you')}
+            {myInitial}
           </div>
           <div>
+            <div className="text-sm font-semibold text-gray-300 max-w-40 truncate">
+              {myDisplayName}
+            </div>
             <div className="text-xl font-bold text-gray-200">
-              {players[myId]?.wpm || 0} WPM
+              {myPlayer?.wpm || 0} WPM
             </div>
             <div className="w-32 h-2 bg-gray-800 rounded-full mt-2 overflow-hidden">
               <motion.div
                 className="h-full bg-teal-500"
                 initial={{ width: 0 }}
-                animate={{ width: `${players[myId]?.progress || 0}%` }}
+                animate={{ width: `${myPlayer?.progress || 0}%` }}
               />
             </div>
           </div>
@@ -173,6 +193,9 @@ export function BattleArena({
 
         <div className="flex items-center gap-4 text-right">
           <div>
+            <div className="text-sm font-semibold text-gray-300 max-w-40 truncate">
+              {opponent ? opponentDisplayName : t('waiting')}
+            </div>
             <div className="text-xl font-bold text-gray-200">
               {opponent ? `${opponent.wpm} WPM` : '---'}
             </div>
@@ -185,7 +208,7 @@ export function BattleArena({
             </div>
           </div>
           <div className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400 font-bold">
-            {t('opponent')}
+            {opponentInitial}
           </div>
         </div>
       </div>

@@ -16,13 +16,14 @@ const rooms = new Map()
 const broadcastRooms = () => {
   const publicRooms = []
   rooms.forEach((room) => {
-    if (room.status === 'waiting') {
+    if (room.status === 'waiting' && !room.config?.isPrivate) {
       publicRooms.push({
         id: room.id,
         host: room.players[room.host]?.username || 'Unknown',
         mode: room.config?.mode || 'race',
         difficulty: room.config?.difficulty || 'medium',
         playerCount: Object.keys(room.players).length,
+        isPrivate: false,
         config: room.config,
       })
     }
@@ -44,7 +45,10 @@ io.on('connection', (socket) => {
       return
     }
 
-    const roomId = Math.random().toString(36).substring(2, 8).toUpperCase()
+    let roomId
+    do {
+      roomId = Math.random().toString(36).substring(2, 8).toUpperCase()
+    } while (rooms.has(roomId))
 
     rooms.set(roomId, {
       id: roomId,
@@ -65,6 +69,7 @@ io.on('connection', (socket) => {
         difficulty: config.difficulty || 'medium',
         text: config.text,
         language: config.language || 'english',
+        isPrivate: Boolean(config.isPrivate),
       },
       host: socket.id,
       countdown: null,

@@ -9,6 +9,7 @@ export type BattleConfig = {
   difficulty: string
   text: string
   language?: string
+  isPrivate?: boolean
 }
 
 export type BattlePlayer = {
@@ -33,6 +34,7 @@ export type BattleRoom = {
   mode: string
   difficulty: string
   playerCount: number
+  isPrivate?: boolean
   config?: BattleConfig
 }
 
@@ -168,9 +170,12 @@ export function useBattleSocket(username: string) {
   const joinRoom = useCallback(
     (roomId: string) => {
       const socket = socketRef.current
+      const normalizedRoomId = roomId.trim().toUpperCase()
+      if (!normalizedRoomId) return
+
       connect()
       setError(null)
-      socket?.emit('join_room', { roomId, username })
+      socket?.emit('join_room', { roomId: normalizedRoomId, username })
       setWinner(null)
     },
     [username, connect]

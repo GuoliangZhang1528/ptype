@@ -348,9 +348,10 @@ export const useTypingStore = create<TypingState>((set, get) => ({
     const elapsedSeconds = startTime ? (Date.now() - startTime) / 1000 : 0
     const currentAccuracy = get().accuracy
 
-    // 计算 WPM (仅英文模式)
+    // 计算 WPM. Custom text may be English battle text, so keep a 5-char word
+    // estimate there instead of forcing it to zero.
     const currentWpm =
-      settings.mode === 'english'
+      settings.mode === 'english' || settings.mode === 'custom'
         ? calculateWPM(correctChars, elapsedSeconds)
         : 0
 

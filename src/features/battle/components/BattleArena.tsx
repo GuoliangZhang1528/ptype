@@ -31,6 +31,10 @@ interface BattleArenaProps {
   config?: BattleConfig | null
 }
 
+function clampProgress(progress?: number): number {
+  return Math.min(100, Math.max(0, Math.round(progress || 0)))
+}
+
 export function BattleArena({
   roomId,
   players,
@@ -66,6 +70,8 @@ export function BattleArena({
   const opponentDisplayName = opponent?.username || t('opponent')
   const myInitial = myDisplayName.slice(0, 1).toUpperCase()
   const opponentInitial = opponentDisplayName.slice(0, 1).toUpperCase()
+  const myProgress = clampProgress(myPlayer?.progress)
+  const opponentProgress = clampProgress(opponent?.progress)
 
   const localBattleWpm = wpm > 0 ? wpm : Math.round(cpm / 5)
 
@@ -111,7 +117,7 @@ export function BattleArena({
       // Recalculate progress based on latest state
       const currentProgress =
         displayText.length > 0
-          ? (correctChars / displayText.length) * 100
+          ? (typedText.length / displayText.length) * 100
           : 0
       onUpdateProgress(localBattleWpm, currentProgress, correctChars)
     }
@@ -156,12 +162,17 @@ export function BattleArena({
             <div className="text-xl font-bold text-gray-200">
               {myPlayer?.wpm || 0} WPM
             </div>
-            <div className="w-32 h-2 bg-gray-800 rounded-full mt-2 overflow-hidden">
-              <motion.div
-                className="h-full bg-teal-500"
-                initial={{ width: 0 }}
-                animate={{ width: `${myPlayer?.progress || 0}%` }}
-              />
+            <div className="mt-2 flex items-center gap-3">
+              <div className="h-2 w-32 overflow-hidden rounded-full bg-gray-800">
+                <motion.div
+                  className="h-full bg-teal-500"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${myProgress}%` }}
+                />
+              </div>
+              <span className="min-w-12 text-right font-mono text-sm tabular-nums text-teal-300">
+                {myProgress}%
+              </span>
             </div>
           </div>
         </div>
@@ -199,12 +210,17 @@ export function BattleArena({
             <div className="text-xl font-bold text-gray-200">
               {opponent ? `${opponent.wpm} WPM` : '---'}
             </div>
-            <div className="w-32 h-2 bg-gray-800 rounded-full mt-2 overflow-hidden flex justify-end">
-              <motion.div
-                className="h-full bg-purple-500"
-                initial={{ width: 0 }}
-                animate={{ width: `${opponent?.progress || 0}%` }}
-              />
+            <div className="mt-2 flex items-center justify-end gap-3">
+              <span className="min-w-12 text-left font-mono text-sm tabular-nums text-purple-300">
+                {opponent ? `${opponentProgress}%` : '--'}
+              </span>
+              <div className="flex h-2 w-32 justify-end overflow-hidden rounded-full bg-gray-800">
+                <motion.div
+                  className="h-full bg-purple-500"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${opponentProgress}%` }}
+                />
+              </div>
             </div>
           </div>
           <div className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400 font-bold">

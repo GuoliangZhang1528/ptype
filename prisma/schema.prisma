@@ -11,9 +11,9 @@ model User {
   id        String   @id @default(cuid())
   email     String   @unique
   username  String   @unique
-  password  String   // Hashed password
+  password  String // Hashed password
   avatarUrl String?
-  settings  Json?    // User preferences (e.g., customDuration, lastMode)
+  settings  Json? // User preferences (e.g., customDuration, lastMode)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -31,20 +31,23 @@ model CustomText {
   updatedAt DateTime @updatedAt
 
   @@index([userId])
+  @@index([userId, updatedAt(sort: Desc)])
 }
 
 model TypingResult {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id])
-  cpm         Int      @map("wpm") // Map to existing 'wpm' column, effectively treating it as CPM storage
-  accuracy    Float
-  mode        String   // 'english', 'chinese', 'coder'
-  subMode     String?  // 'modern', 'classical' or 'python', 'javascript', etc.
-  difficulty  String   // 'easy', 'medium', 'hard'
-  duration    Int      // seconds
-  createdAt   DateTime @default(now())
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  cpm        Int      @map("wpm") // Map to existing 'wpm' column, effectively treating it as CPM storage
+  accuracy   Float
+  mode       String // 'english', 'chinese', 'coder'
+  subMode    String? // 'modern', 'classical' or 'python', 'javascript', etc.
+  difficulty String // 'easy', 'medium', 'hard'
+  duration   Int // seconds
+  createdAt  DateTime @default(now())
 
-  @@index([mode, difficulty, cpm(sort: Desc)]) // Optimized for Leaderboard queries
-  @@index([userId])                            // Optimized for User History queries
+  @@index([mode, difficulty, cpm(sort: Desc)]) // Optimized for basic Leaderboard queries
+  @@index([mode, difficulty, subMode, userId, cpm(sort: Desc), accuracy(sort: Desc), createdAt]) // Optimized for DISTINCT ON leaderboard query
+  @@index([userId]) // Optimized for User History queries
+  @@index([userId, createdAt(sort: Desc)]) // Optimized for profile activity/history queries
 }

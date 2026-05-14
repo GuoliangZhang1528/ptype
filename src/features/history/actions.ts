@@ -7,6 +7,7 @@ import {
   verifyAdvancedSignature,
   type AdvancedSignaturePayload,
 } from '@/lib/security/verifier'
+import { saveResultSchema } from './validation'
 
 export interface TypingResultData {
   id: string
@@ -146,6 +147,11 @@ export async function saveTypingResult(
       }
     }
 
+    const validation = saveResultSchema.safeParse(input)
+    if (!validation.success) {
+      return { success: false, error: 'Invalid result data' }
+    }
+
     const userId = await getUserId()
     if (!userId) {
       return { success: false, error: 'Unauthorized' }
@@ -154,7 +160,7 @@ export async function saveTypingResult(
     const result = await prisma.typingResult.create({
       data: {
         userId,
-        ...input,
+        ...validation.data,
       },
     })
 

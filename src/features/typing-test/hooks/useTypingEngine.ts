@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useCallback, useRef } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { useTypingStore } from '../store/typingStore'
 import { useSoundEffects } from './useSoundEffects'
 import {
@@ -20,28 +21,18 @@ import {
  * 处理键盘事件监听和计时器逻辑
  */
 export function useTypingEngine() {
-  const {
-    status,
-    targetText,
-    displayText,
-    typedText,
-    wpm,
-    cpm,
-    lpm,
-    accuracy,
-    timeLeft,
-    errors,
-    correctChars,
-    cpmHistory,
-    settings,
-    initTest,
-    startTest, // 添加 startTest
-    handleInput,
-    handleBackspace,
-    tick,
-    resetTest,
-    updateSettings,
-  } = useTypingStore()
+  const status = useTypingStore((state) => state.status)
+  const hasTargetText = useTypingStore((state) => Boolean(state.targetText))
+  const { initTest, startTest, tick, resetTest, updateSettings } =
+    useTypingStore(
+      useShallow((state) => ({
+        initTest: state.initTest,
+        startTest: state.startTest,
+        tick: state.tick,
+        resetTest: state.resetTest,
+        updateSettings: state.updateSettings,
+      }))
+    )
 
   const { playClick, playSpace, playEnter, playBackspace } = useSoundEffects()
 
@@ -51,10 +42,10 @@ export function useTypingEngine() {
 
   // 初始化测试
   useEffect(() => {
-    if (!targetText) {
+    if (!hasTargetText) {
       initTest()
     }
-  }, [targetText, initTest])
+  }, [hasTargetText, initTest])
 
   // 计时器逻辑
   useEffect(() => {
@@ -142,7 +133,7 @@ export function useTypingEngine() {
         return
       }
 
-      if (status === 'finished') return
+      if (useTypingStore.getState().status === 'finished') return
 
       const newValue = e.target.value
       const oldValue = inputValueRef.current
@@ -162,14 +153,14 @@ export function useTypingEngine() {
           if (char === ' ') playSpace()
           else if (char === '\n') playEnter()
           else playClick()
-          handleInput(char)
+          useTypingStore.getState().handleInput(char)
         }
       } else if (newValue.length < oldValue.length) {
         // 处理删除
         const deleteCount = oldValue.length - newValue.length
         for (let i = 0; i < deleteCount; i++) {
           playBackspace()
-          handleBackspace()
+          useTypingStore.getState().handleBackspace()
         }
       }
 
@@ -180,9 +171,6 @@ export function useTypingEngine() {
       inputValueRef.current = ''
     },
     [
-      status,
-      handleInput,
-      handleBackspace,
       startIfIdle,
       playSpace,
       playEnter,
@@ -195,16 +183,16 @@ export function useTypingEngine() {
   const handleCompositionStart = useCallback(() => {
     isComposingRef.current = true
     // 中文输入法开始时就开始计时
-    if (status === 'idle') {
+    if (useTypingStore.getState().status === 'idle') {
       startTest()
     }
-  }, [status, startTest])
+  }, [startTest])
 
   const handleCompositionEnd = useCallback(
     (e: React.CompositionEvent<HTMLInputElement>) => {
       isComposingRef.current = false
 
-      if (status === 'finished') return
+      if (useTypingStore.getState().status === 'finished') return
 
       // 获取确认的文本（中文字符）
       const data = e.data
@@ -215,7 +203,7 @@ export function useTypingEngine() {
           // 中文输入一般当作普通点击，或者 specialized sound?
           // 暂时统一用 click，空格可能会比较少见
           playClick()
-          handleInput(char)
+          useTypingStore.getState().handleInput(char)
         }
       }
 
@@ -224,7 +212,7 @@ export function useTypingEngine() {
       target.value = ''
       inputValueRef.current = ''
     },
-    [status, handleInput, startIfIdle, playClick]
+    [startIfIdle, playClick]
   )
 
   // KeyDown handler - 处理特殊键
@@ -240,7 +228,16 @@ export function useTypingEngine() {
         }
       }
 
-      if (status === 'finished') return
+      const store = useTypingStore.getState()
+      if (store.status === 'finished') return
+
+      const {
+        displayText,
+        typedText,
+        settings,
+        handleInput,
+        handleBackspace,
+      } = store
 
       // 处理 Tab 键
       if (e.key === 'Tab') {
@@ -276,7 +273,8 @@ export function useTypingEngine() {
         playBackspace()
         handleBackspace()
         const target = e.target as HTMLInputElement
-        target.value = ''; inputValueRef.current = ''
+        target.value = ''
+        inputValueRef.current = ''
         return
       }
 
@@ -303,12 +301,6 @@ export function useTypingEngine() {
       }
     },
     [
-      status,
-      settings.mode,
-      handleBackspace,
-      handleInput,
-      displayText,
-      typedText,
       startIfIdle,
       playSpace,
       playBackspace,
@@ -317,21 +309,6 @@ export function useTypingEngine() {
   )
 
   return {
-    // 状态
-    status,
-    targetText,
-    displayText,
-    typedText,
-    wpm,
-    cpm,
-    lpm,
-    accuracy,
-    timeLeft,
-    errors,
-    correctChars,
-    cpmHistory,
-    settings,
-
     // 方法
     restart,
     setDuration,

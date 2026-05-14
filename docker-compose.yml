@@ -29,6 +29,7 @@ services:
       dockerfile: Dockerfile
       args:
         PORT: ${PORT:-3000}
+        SOCKET_PORT: ${SOCKET_PORT:-4000}
         NEXT_PUBLIC_BASE_PATH: ${NEXT_PUBLIC_BASE_PATH:-/}
     container_name: ptype_web
     restart: unless-stopped

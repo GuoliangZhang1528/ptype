@@ -63,6 +63,7 @@ export function BattleArena({
   const inputRef = useRef<HTMLInputElement>(null)
   const previousSettingsRef = useRef<TypingSettings | null>(null)
   const battleConfigKeyRef = useRef<string | null>(null)
+  const lastProgressUpdateRef = useRef(0)
 
   const myPlayer = players[myId]
   const opponent = Object.values(players).find((p) => p.id !== myId)
@@ -119,6 +120,12 @@ export function BattleArena({
         displayText.length > 0
           ? (typedText.length / displayText.length) * 100
           : 0
+      const now = Date.now()
+      const isFinished = currentProgress >= 100
+      if (!isFinished && now - lastProgressUpdateRef.current < 100) {
+        return
+      }
+      lastProgressUpdateRef.current = now
       onUpdateProgress(localBattleWpm, currentProgress, correctChars)
     }
   }, [
@@ -135,6 +142,7 @@ export function BattleArena({
   useEffect(() => {
     if (status === 'playing') {
       console.log('Battle Started! Focusing input...')
+      lastProgressUpdateRef.current = 0
       // Force focus
       setTimeout(() => inputRef.current?.focus(), 100)
     }

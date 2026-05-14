@@ -35,7 +35,7 @@ export type BattleRoom = {
   difficulty: string
   playerCount: number
   isPrivate?: boolean
-  config?: BattleConfig
+  config?: Omit<BattleConfig, 'text'> & { text?: string }
 }
 
 export function useBattleSocket(username: string) {

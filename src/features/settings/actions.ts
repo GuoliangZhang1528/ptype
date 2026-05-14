@@ -10,6 +10,10 @@ type UserSettings = Prisma.JsonObject & {
 
 export async function saveCustomDuration(duration: number) {
   try {
+    if (!Number.isInteger(duration) || duration < 1 || duration > 9999) {
+      return { success: false, error: 'Invalid duration' }
+    }
+
     const userId = await getUserId()
     if (!userId) return { success: false, error: 'Unauthorized' }
 

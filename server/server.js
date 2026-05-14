@@ -1,9 +1,17 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { Server } = require('socket.io')
 
-const io = new Server(4000, {
+const PORT = Number(process.env.SOCKET_PORT || 4000)
+const CORS_ORIGIN = process.env.SOCKET_CORS_ORIGIN || '*'
+const ROOM_ID_PATTERN = /^[A-Z0-9]{6}$/
+const MAX_USERNAME_LENGTH = 32
+const MAX_TEXT_LENGTH = 5000
+const MIN_TEXT_LENGTH = 20
+const PROGRESS_UPDATE_INTERVAL_MS = 100
+
+const io = new Server(PORT, {
   cors: {
-    origin: '*', // In prod, restrict this to the frontend URL
+    origin: CORS_ORIGIN,
     methods: ['GET', 'POST'],
   },
 })
@@ -11,6 +19,62 @@ const io = new Server(4000, {
 // Store room state
 // rooms = { [roomId]: { players: { [socketId]: { id, username, wpm, progress, correctChars } }, status: 'waiting' | 'playing' | 'finished', config } }
 const rooms = new Map()
+
+function emitError(socket, message) {
+  socket.emit('error', { message })
+}
+
+function sanitizeUsername(username) {
+  if (typeof username !== 'string') return null
+  const trimmed = username.trim()
+  if (!trimmed || trimmed.length > MAX_USERNAME_LENGTH) return null
+  return trimmed
+}
+
+function normalizeRoomId(roomId) {
+  if (typeof roomId !== 'string') return null
+  const normalized = roomId.trim().toUpperCase()
+  return ROOM_ID_PATTERN.test(normalized) ? normalized : null
+}
+
+function sanitizeConfig(config) {
+  if (!config || typeof config !== 'object') return null
+  if (typeof config.text !== 'string') return null
+
+  const text = config.text.trim()
+  if (text.length < MIN_TEXT_LENGTH || text.length > MAX_TEXT_LENGTH) {
+    return null
+  }
+
+  const mode = config.mode === 'time' ? 'time' : 'race'
+  const timeLimit = Number(config.timeLimit)
+  const safeTimeLimit =
+    Number.isInteger(timeLimit) && timeLimit >= 15 && timeLimit <= 300
+      ? timeLimit
+      : 60
+  const difficulty = ['easy', 'medium', 'hard'].includes(config.difficulty)
+    ? config.difficulty
+    : 'medium'
+  const language =
+    typeof config.language === 'string' && config.language.length <= 40
+      ? config.language
+      : 'english'
+
+  return {
+    mode,
+    timeLimit: safeTimeLimit,
+    difficulty,
+    text,
+    language,
+    isPrivate: Boolean(config.isPrivate),
+  }
+}
+
+function clampNumber(value, min, max) {
+  const number = Number(value)
+  if (!Number.isFinite(number)) return min
+  return Math.min(max, Math.max(min, number))
+}
 
 // Helper to broadcast room list
 const broadcastRooms = () => {
@@ -24,7 +88,13 @@ const broadcastRooms = () => {
         difficulty: room.config?.difficulty || 'medium',
         playerCount: Object.keys(room.players).length,
         isPrivate: false,
-        config: room.config,
+        config: {
+          mode: room.config?.mode || 'race',
+          timeLimit: room.config?.timeLimit || 60,
+          difficulty: room.config?.difficulty || 'medium',
+          language: room.config?.language || 'english',
+          isPrivate: false,
+        },
       })
     }
   })
@@ -40,8 +110,11 @@ io.on('connection', (socket) => {
   })
 
   socket.on('create_room', ({ username, config }) => {
-    if (!config?.text) {
-      socket.emit('error', { message: 'Invalid room config' })
+    const safeUsername = sanitizeUsername(username)
+    const safeConfig = sanitizeConfig(config)
+
+    if (!safeUsername || !safeConfig) {
+      emitError(socket, 'Invalid room config')
       return
     }
 
@@ -55,7 +128,7 @@ io.on('connection', (socket) => {
       players: {
         [socket.id]: {
           id: socket.id,
-          username,
+          username: safeUsername,
           wpm: 0,
           progress: 0,
           correctChars: 0,
@@ -63,14 +136,7 @@ io.on('connection', (socket) => {
         },
       },
       status: 'waiting',
-      config: {
-        mode: config.mode || 'race',
-        timeLimit: config.timeLimit || 60,
-        difficulty: config.difficulty || 'medium',
-        text: config.text,
-        language: config.language || 'english',
-        isPrivate: Boolean(config.isPrivate),
-      },
+      config: safeConfig,
       host: socket.id,
       countdown: null,
       timer: null,
@@ -82,63 +148,74 @@ io.on('connection', (socket) => {
       players: rooms.get(roomId).players,
       config: rooms.get(roomId).config,
     })
-    console.log(`Room ${roomId} created by ${username}`)
+    console.log(`Room ${roomId} created by ${safeUsername}`)
     broadcastRooms()
   })
 
   socket.on('join_room', ({ roomId, username }) => {
-    const room = rooms.get(roomId)
+    const safeRoomId = normalizeRoomId(roomId)
+    const safeUsername = sanitizeUsername(username)
+
+    if (!safeRoomId || !safeUsername) {
+      emitError(socket, 'Invalid room request')
+      return
+    }
+
+    const room = rooms.get(safeRoomId)
 
     if (!room) {
-      socket.emit('error', { message: 'Room not found' })
+      emitError(socket, 'Room not found')
       return
     }
 
     if (Object.keys(room.players).length >= 2) {
-      socket.emit('error', { message: 'Room is full' })
+      emitError(socket, 'Room is full')
       return
     }
 
     if (room.status !== 'waiting') {
-      socket.emit('error', { message: 'Game already started' })
+      emitError(socket, 'Game already started')
       return
     }
 
     room.players[socket.id] = {
       id: socket.id,
-      username,
+      username: safeUsername,
       wpm: 0,
       progress: 0,
       correctChars: 0,
       ready: false,
     }
-    socket.join(roomId)
+    socket.join(safeRoomId)
 
     // IMPORTANT: Send full state to the new joiner so they see the Host
     socket.emit('room_joined', {
-      roomId,
+      roomId: safeRoomId,
       players: room.players,
       config: room.config,
     })
 
     // Notify others
-    io.to(roomId).emit('player_joined', {
+    io.to(safeRoomId).emit('player_joined', {
       players: room.players,
       config: room.config,
     })
-    console.log(`${username} joined room ${roomId}`)
+    console.log(`${safeUsername} joined room ${safeRoomId}`)
     broadcastRooms()
   })
 
   socket.on('player_ready', ({ roomId, ready }) => {
-    const room = rooms.get(roomId)
+    const safeRoomId = normalizeRoomId(roomId)
+    if (!safeRoomId) return
+
+    const room = rooms.get(safeRoomId)
     if (!room) return
 
     if (room.players[socket.id]) {
-      room.players[socket.id].ready = ready
+      room.players[socket.id].ready = Boolean(ready)
     }
 
-    io.to(roomId).emit('player_update', { players: room.players })
+    io.to(safeRoomId).emit('player_update', { players: room.players })
 
     // Check if all players ready
     const allReady = Object.values(room.players).every((p) => p.ready)
@@ -147,48 +224,71 @@ io.on('connection', (socket) => {
     if (room.countdown && !allReady) {
       clearInterval(room.countdown)
       room.countdown = null
-      io.to(roomId).emit('countdown_cancelled')
+      io.to(safeRoomId).emit('countdown_cancelled')
       return
     }
 
     if (allReady && playerCount === 2 && !room.countdown) {
       // Start countdown
-      console.log(`Room ${roomId} starting...`)
+      console.log(`Room ${safeRoomId} starting...`)
       let count = 3
       room.countdown = setInterval(() => {
-        io.to(roomId).emit('countdown', count)
+        io.to(safeRoomId).emit('countdown', count)
         count--
 
         if (count < 0) {
           clearInterval(room.countdown)
           room.countdown = null
-          handleStartGame(roomId)
+          handleStartGame(safeRoomId)
         }
       }, 1000)
     }
   })
 
   socket.on('update_progress', ({ roomId, wpm, progress, correctChars }) => {
-    const room = rooms.get(roomId)
-    if (!room || room.status !== 'playing') return
+    const safeRoomId = normalizeRoomId(roomId)
+    if (!safeRoomId) return
 
-    if (room.players[socket.id]) {
-      room.players[socket.id].wpm = wpm
-      room.players[socket.id].progress = progress
-      room.players[socket.id].correctChars = correctChars || 0
+    const room = rooms.get(safeRoomId)
+    if (!room || room.status !== 'playing') return
+    if (!room.players[socket.id]) return
+
+    const player = room.players[socket.id]
+    socket.data.lastProgressUpdateByRoom ||= {}
+    const now = Date.now()
+    const lastProgressUpdate = socket.data.lastProgressUpdateByRoom[safeRoomId]
+    if (
+      lastProgressUpdate &&
+      now - lastProgressUpdate < PROGRESS_UPDATE_INTERVAL_MS
+    ) {
+      return
     }
+    socket.data.lastProgressUpdateByRoom[safeRoomId] = now
+
+    const safeWpm = Math.round(clampNumber(wpm, 0, 500))
+    const safeProgress = clampNumber(progress, 0, 100)
+    const safeCorrectChars = Math.round(
+      clampNumber(correctChars, 0, MAX_TEXT_LENGTH)
+    )
+
+    player.wpm = safeWpm
+    player.progress = safeProgress
+    player.correctChars = safeCorrectChars
 
     // Broadcast to everyone in room (including self, to simplify sync)
-    io.to(roomId).emit('progress_update', { players: room.players })
+    io.to(safeRoomId).emit('progress_update', { players: room.players })
 
     // Check win condition
-    if (progress >= 100) {
-      finishGame(roomId, socket.id)
+    if (safeProgress >= 100) {
+      finishGame(safeRoomId, socket.id)
     }
   })
 
   socket.on('leave_room', ({ roomId }) => {
-    handleLeave(socket, roomId)
+    const safeRoomId = normalizeRoomId(roomId)
+    if (safeRoomId) {
+      handleLeave(socket, safeRoomId)
+    }
   })
 
   socket.on('disconnect', () => {
@@ -254,7 +354,8 @@ function handleStartGame(roomId) {
       players.sort((a, b) => (b.correctChars || 0) - (a.correctChars || 0))
 
       const topScore = players[0]?.correctChars || 0
-      const isTie = players.filter((p) => (p.correctChars || 0) === topScore).length > 1
+      const isTie =
+        players.filter((p) => (p.correctChars || 0) === topScore).length > 1
       const winnerId = isTie ? null : players[0]?.id
       finishGame(roomId, winnerId)
     }, limitMs)
@@ -272,4 +373,4 @@ function finishGame(roomId, winnerId) {
   console.log(`Room ${roomId} finished. Winner: ${winnerId}`)
 }
 
-console.log('Socket server running on port 4000')
+console.log(`Socket server running on port ${PORT}`)

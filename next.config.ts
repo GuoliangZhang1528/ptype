@@ -6,6 +6,7 @@ const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts')
 // Base path is a build-time Next.js setting. Docker must pass it as a build arg.
 const rawBasePath = process.env.NEXT_PUBLIC_BASE_PATH || '/'
 const basePath = rawBasePath === '/' ? '' : rawBasePath.replace(/\/+$/, '')
+const socketPort = process.env.SOCKET_PORT || '4000'
 
 /** @type {import('next').NextConfig} */
 const nextConfig: NextConfig = {
@@ -42,11 +43,11 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/socket.io',
-        destination: 'http://127.0.0.1:4000/socket.io/',
+        destination: `http://127.0.0.1:${socketPort}/socket.io/`,
       },
       {
         source: '/socket.io/:path*',
-        destination: 'http://127.0.0.1:4000/socket.io/:path*',
+        destination: `http://127.0.0.1:${socketPort}/socket.io/:path*`,
       },
     ]
   },

@@ -7,6 +7,11 @@ import {
   verifyAdvancedSignature,
   type AdvancedSignaturePayload,
 } from '@/lib/security/verifier'
+import {
+  createCustomTextSchema,
+  deleteCustomTextSchema,
+  updateCustomTextSchema,
+} from './validation'
 
 export interface CustomText {
   id: string
@@ -27,7 +32,15 @@ export async function getCustomTexts(): Promise<{
 
     const texts = await prisma.customText.findMany({
       where: { userId },
+      select: {
+        id: true,
+        title: true,
+        content: true,
+        createdAt: true,
+        updatedAt: true,
+      },
       orderBy: { updatedAt: 'desc' },
+      take: 100,
     })
 
     return { success: true, data: texts }
@@ -56,11 +69,16 @@ export async function createCustomText(
     const userId = await getUserId()
     if (!userId) return { success: false, error: 'Unauthorized' }
 
+    const validation = createCustomTextSchema.safeParse(input)
+    if (!validation.success) {
+      return { success: false, error: 'Invalid custom text' }
+    }
+
     const text = await prisma.customText.create({
       data: {
         userId,
-        title: input.title,
-        content: input.content,
+        title: validation.data.title,
+        content: validation.data.content,
       },
     })
 
@@ -92,11 +110,16 @@ export async function updateCustomText(
     const userId = await getUserId()
     if (!userId) return { success: false, error: 'Unauthorized' }
 
+    const validation = updateCustomTextSchema.safeParse(input)
+    if (!validation.success) {
+      return { success: false, error: 'Invalid custom text' }
+    }
+
     const text = await prisma.customText.update({
-      where: { id: input.id, userId },
+      where: { id: validation.data.id, userId },
       data: {
-        title: input.title,
-        content: input.content,
+        title: validation.data.title,
+        content: validation.data.content,
       },
     })
 
@@ -126,8 +149,13 @@ export async function deleteCustomText(
     const userId = await getUserId()
     if (!userId) return { success: false, error: 'Unauthorized' }
 
+    const validation = deleteCustomTextSchema.safeParse(input)
+    if (!validation.success) {
+      return { success: false, error: 'Invalid custom text id' }
+    }
+
     await prisma.customText.delete({
-      where: { id: input.id, userId },
+      where: { id: validation.data.id, userId },
     })
 
     revalidatePath('/settings')

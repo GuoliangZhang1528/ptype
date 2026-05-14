@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { useTypingStore } from '../store/typingStore'
 import { SoundType } from '@/lib/constants'
 
@@ -20,8 +21,13 @@ const SOUND_FILES: Record<SoundType, Record<SoundKey, string>> = {
 }
 
 export function useSoundEffects() {
-  const { settings } = useTypingStore()
-  const { soundEnabled, soundType, soundVolume } = settings
+  const { soundEnabled, soundType, soundVolume } = useTypingStore(
+    useShallow((state) => ({
+      soundEnabled: state.settings.soundEnabled,
+      soundType: state.settings.soundType,
+      soundVolume: state.settings.soundVolume,
+    }))
+  )
 
   // Use a ref to cache loaded Audio objects
   // format: Map<SoundType, Map<SoundKey, Audio>>

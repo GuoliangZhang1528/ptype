@@ -7,6 +7,7 @@ import {
   verifyAdvancedSignature,
   type AdvancedSignaturePayload,
 } from '@/lib/security/verifier'
+import { z } from 'zod'
 
 export interface ProfileStats {
   joinDate: string
@@ -52,40 +53,39 @@ export async function getProfile(): Promise<{
       return { success: false, error: 'Unauthorized' }
     }
 
-    const user = await prisma.user.findFirst({
-      where: { id: userId },
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        createdAt: true,
-      },
-    })
-
-    if (!user) {
-      return { success: false, error: 'User not found' }
-    }
-
-    // Aggregate stats
-    const aggregations = await prisma.typingResult.aggregate({
-      where: { userId },
-      _avg: { cpm: true },
-      _max: { cpm: true },
-      _sum: { duration: true },
-      _count: { id: true },
-    })
-
     // Get activity history (last 365 days)
     const oneYearAgo = new Date()
     oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
 
-    const recentResults = await prisma.typingResult.findMany({
-      where: {
-        userId,
-        createdAt: { gte: oneYearAgo },
-      },
-      select: { createdAt: true },
-    })
+    const [user, aggregations, recentResults] = await Promise.all([
+      prisma.user.findFirst({
+        where: { id: userId },
+        select: {
+          id: true,
+          username: true,
+          email: true,
+          createdAt: true,
+        },
+      }),
+      prisma.typingResult.aggregate({
+        where: { userId },
+        _avg: { cpm: true },
+        _max: { cpm: true },
+        _sum: { duration: true },
+        _count: { id: true },
+      }),
+      prisma.typingResult.findMany({
+        where: {
+          userId,
+          createdAt: { gte: oneYearAgo },
+        },
+        select: { createdAt: true },
+      }),
+    ])
+
+    if (!user) {
+      return { success: false, error: 'User not found' }
+    }
 
     const activityMap = new Map<string, number>()
     recentResults.forEach((r) => {
@@ -119,6 +119,18 @@ interface UpdateProfileInput {
   username: string
 }
 
+const updateProfileSchema = z.object({
+  username: z
+    .string()
+    .trim()
+    .min(2, '用户名至少需要 2 个字符')
+    .max(20, '用户名不能超过 20 个字符')
+    .regex(
+      /^[a-zA-Z0-9_\u4e00-\u9fa5]+$/,
+      '用户名只能包含字母、数字、下划线和中文'
+    ),
+})
+
 export async function updateProfile(
   input: UpdateProfileInput,
   signature?: AdvancedSignaturePayload
@@ -135,13 +147,17 @@ export async function updateProfile(
       return { success: false, error: 'Unauthorized' }
     }
 
-    if (!input.username || input.username.trim().length === 0) {
-      return { success: false, error: 'Username is required' }
+    const validation = updateProfileSchema.safeParse(input)
+    if (!validation.success) {
+      return {
+        success: false,
+        error: validation.error.issues[0]?.message || 'Invalid profile data',
+      }
     }
 
     const updatedUser = await prisma.user.update({
       where: { id: userId },
-      data: { username: input.username },
+      data: { username: validation.data.username },
       select: {
         id: true,
         username: true,

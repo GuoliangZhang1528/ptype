@@ -97,10 +97,11 @@ RUN chmod +x ./docker-entrypoint.sh
 
 USER nextjs
 
-# 允许 PORT 通过 build args 或环境变量传入，默认为 3000
+# 允许 PORT / SOCKET_PORT 通过 build args 或环境变量传入
 ARG PORT=3000
+ARG SOCKET_PORT=4000
 EXPOSE ${PORT}
-EXPOSE 4000
+EXPOSE ${SOCKET_PORT}
 
 ENV HOSTNAME="0.0.0.0"
 

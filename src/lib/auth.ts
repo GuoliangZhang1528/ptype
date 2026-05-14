@@ -1,9 +1,13 @@
 import { jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'default-secret-key'
-)
+function getJwtSecret(): Uint8Array {
+  const secret = process.env.JWT_SECRET
+  if (!secret && process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET must be set in production')
+  }
+  return new TextEncoder().encode(secret || 'default-secret-key')
+}
 
 export async function getUserId(): Promise<string | null> {
   const cookieStore = await cookies()
@@ -14,7 +18,7 @@ export async function getUserId(): Promise<string | null> {
   }
 
   try {
-    const { payload } = await jwtVerify(token.value, JWT_SECRET)
+    const { payload } = await jwtVerify(token.value, getJwtSecret())
     return payload.sub as string
   } catch {
     return null

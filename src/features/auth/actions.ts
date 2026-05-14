@@ -12,9 +12,13 @@ import {
   type AdvancedSignaturePayload,
 } from '@/lib/security/verifier'
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'default-secret-key'
-)
+function getJwtSecret(): Uint8Array {
+  const secret = process.env.JWT_SECRET
+  if (!secret && process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET must be set in production')
+  }
+  return new TextEncoder().encode(secret || 'default-secret-key')
+}
 
 // Cookie secure 设置：HTTPS 环境设为 true，HTTP 环境设为 false
 // 可通过 SECURE_COOKIES=false 环境变量在生产环境禁用
@@ -48,7 +52,10 @@ export async function login(
       return { success: false, error: validationResult.error.issues[0].message }
     }
 
-    const { identifier, password } = validationResult.data
+    const { password } = validationResult.data
+    const identifier = validationResult.data.identifier.includes('@')
+      ? validationResult.data.identifier.trim().toLowerCase()
+      : validationResult.data.identifier.trim()
 
     const user = await prisma.user.findFirst({
       where: {
@@ -73,7 +80,7 @@ export async function login(
     })
       .setProtectedHeader({ alg: 'HS256' })
       .setExpirationTime('7d')
-      .sign(JWT_SECRET)
+      .sign(getJwtSecret())
 
     const cookieStore = await cookies()
     cookieStore.set('token', token, {
@@ -118,7 +125,8 @@ export async function register(
       return { success: false, error: validationResult.error.issues[0].message }
     }
 
-    const { email, username, password } = validationResult.data
+    const { username, password } = validationResult.data
+    const email = validationResult.data.email.trim().toLowerCase()
 
     const existingEmail = await prisma.user.findUnique({ where: { email } })
     if (existingEmail) {
@@ -149,7 +157,7 @@ export async function register(
     })
       .setProtectedHeader({ alg: 'HS256' })
       .setExpirationTime('7d')
-      .sign(JWT_SECRET)
+      .sign(getJwtSecret())
 
     const cookieStore = await cookies()
     cookieStore.set('token', token, {
@@ -200,7 +208,7 @@ export async function checkAuth(): Promise<AuthResult> {
 
     if (!token) return { success: false }
 
-    const { payload } = await jwtVerify(token.value, JWT_SECRET)
+    const { payload } = await jwtVerify(token.value, getJwtSecret())
     const userId = payload.sub as string
 
     if (!userId) return { success: false }
@@ -238,11 +246,15 @@ export async function checkAvailability(
   value: string
 ): Promise<boolean> {
   try {
-    if (!value) return false
+    if (!['email', 'username'].includes(field)) return false
+    if (typeof value !== 'string' || !value.trim()) return false
+
+    const normalizedValue =
+      field === 'email' ? value.trim().toLowerCase() : value.trim()
 
     const count = await prisma.user.count({
       where: {
-        [field]: value,
+        [field]: normalizedValue,
       },
     })
 
